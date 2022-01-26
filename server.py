@@ -30,6 +30,9 @@ import os
 
 # Resources used for this assignment:
 # https://docs.python.org/3/library/os.path.html
+# https://docs.python.org/3/library/socketserver.html
+# HTTP Part II Notes for formatting response
+# https://stackoverflow.com/questions/21153262/sending-html-through-python-socket-server
 
 
 # Define host url and port number
@@ -50,16 +53,23 @@ statusCodes = {
 
 class MyWebServer(socketserver.BaseRequestHandler):
 
-    def handle_mimetype(self, path):
+    def move_path(self, path):
         """
-        Function for checking the provided path and returning the mime_type
+        Function for checking the provided path, adding path endings when needed and returning the mime_type
         """
-        if path.endswith(".css"):
-            return "text/css"
+        # Join path from current working directory, have it only serve files after ./www
+        joined_path = os.path.join(os.getcwd(), 'www' + path)
+        if not joined_path.endswith('/') and not os.path.isfile(joined_path):
+            joined_path += '/'
+            if os.path.exists(joined_path):
+                # Send a 301 Moved Permanently status code if a path exists after adding path ending
+                self.send_content("moved")
+        if not os.path.isfile(joined_path):
+            joined_path += 'index.html'
 
-        return "text/html"
+        return joined_path
 
-    def send_request(self, status, path=None):
+    def send_content(self, status, path=None):
         """
         Function for sending content and HTTP status code responses
         """
@@ -67,52 +77,47 @@ class MyWebServer(socketserver.BaseRequestHandler):
         if path:
             # Try and convert the path to a mimetype
             try:
-                mime_type = self.handle_mimetype(path)
-                f = open(path, 'r+b')
-                content = f.read()
-                self.request.sendall(bytearray(statusCodes["OK"], 'utf-8'))
-                self.request.sendall(
-                    bytearray("Content-Type: {}\r\n".format(mime_type), 'utf-8'))
-                self.request.sendall(
-                    bytearray("Content-Length: {}\r\n".format(len(content)), 'utf-8'))
-                self.request.sendall(
-                    bytearray("Connection: close\r\n", 'utf-8'))
-                self.request.sendall(bytearray("\r\n", 'utf-8'))
-                self.request.sendall(content)
-                f.close()
+                mime_type = "text/css" if path.endswith(".css") else "text/html"
+                with open(path, 'r+b') as file:
+                    content = file.read()
+                    self.request.sendall(
+                        bytearray(statusCodes[status], 'utf-8'))
+                    self.request.sendall(
+                        bytearray("Content-Type: {}\r\n".format(mime_type), 'utf-8'))
+                    self.request.sendall(
+                        bytearray("Content-Length: {}\r\n\r\n".format(len(content)), 'utf-8'))
+                    self.request.sendall(content)
+                    file.close()
             except:
-                self.request.sendall(
-                    bytearray(statusCodes["notFound"], 'utf-8'))
+                self.request.sendall(bytearray(statusCodes["notFound"], 'utf-8'))
+
+        # If no path is provided, print the status code
         else:
-            self.request.sendall(bytearray(statusCodes["notFound"], 'utf-8'))
+            self.request.sendall(bytearray(statusCodes[status], 'utf-8'))
 
     def handle(self):
         # Responses should be in HTTP/1.1 since this is a 1.1 compliant web server
         self.data = self.request.recv(BUFFER_SIZE).strip()
         print("Got a request of: %s\n" % self.data)
         # Split data and extract the request method and protocol
-        parsedData = self.data.split()
+        parsedData = self.data.decode().split()
         requestMethod, path = parsedData[0], parsedData[1]
         print("Request Method: %s, Path: %s" % (requestMethod, path))
 
         # Handle Get Requests
         if requestMethod == "GET":
-            # Join path from current working directory, have it only serve files after ./www
-            joined_path = os.path.join(os.getcwd(), 'www' + path)
-            if not joined_path.endswith('/') and not os.path.isfile(joined_path):
-                joined_path += '/'
-                self.send_request("moved")
-            # Check that the absolute path of the joined path is www so no other directories are accessed
-            # if not os.path.abspath(joined_path).endswith('www'):
-            #     print("NOT FOUNDS")
-            #     self.send_request("notFound")
-            # else:
-            if not os.path.isfile(joined_path):
-                joined_path += 'index.html'
-            self.send_request("OK", joined_path)
-            # Return a 405 status code for other types of non-supported request methods (POST/PUT/DELETE)
+            file_path = self.move_path(path)
+
+            # Check if the path exists, if it does, send the content along with a 200 status code
+            if os.path.exists(file_path):
+                self.send_content("OK", file_path)
+            else:
+                # Send a 404 error code otherwise
+                self.send_content("notFound")
+
+        # Return a 405 status code for other types of non-supported request methods (POST/PUT/DELETE)
         else:
-            self.send_request("notAllowed")
+            self.send_content("notAllowed")
 
 
 if __name__ == "__main__":
