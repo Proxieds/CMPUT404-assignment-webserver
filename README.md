@@ -25,6 +25,7 @@ server.py contains contributions from:
 * https://docs.python.org/3/library/os.path.html | For path joins and os documentation
 * https://docs.python.org/3/library/socketserver.html | socketserver documentation
 * https://stackoverflow.com/questions/21153262/sending-html-through-python-socket-server | Example HTTP Response Structure
+* https://docs.python.org/3/library/mimetypes.html | Documentation for mimetypes library and return value of guess_type()
 
 But the server.py example is derived from the python documentation
 examples thus some of the code is Copyright © 2001-2013 Python

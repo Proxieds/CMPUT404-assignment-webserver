@@ -2,6 +2,8 @@
 import socketserver
 # Import os for handling path joins
 import os
+# Handling other mimetypes like application/octet-stream, etc.
+import mimetypes
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos, Victor Lieu
 #
@@ -33,7 +35,7 @@ import os
 # https://docs.python.org/3/library/socketserver.html
 # HTTP Part II Notes for formatting response
 # https://stackoverflow.com/questions/21153262/sending-html-through-python-socket-server
-
+# https://docs.python.org/3/library/mimetypes.html
 
 # Define host url and port number
 HOST = "127.0.0.1"
@@ -49,7 +51,6 @@ statusCodes = {
     "notFound": "HTTP/1.1 404 Not Found\r\n",
     "notAllowed": "HTTP/1.1 405 Method Not Allowed\r\n"
 }
-
 
 class MyWebServer(socketserver.BaseRequestHandler):
 
@@ -77,7 +78,9 @@ class MyWebServer(socketserver.BaseRequestHandler):
         if path:
             # Try and convert the path to a mimetype
             try:
-                mime_type = "text/css" if path.endswith(".css") else "text/html"
+                # Old method for handling mimetypes, would not work with other types in the future, using stdlib mime_types instead 
+                # mime_type = "text/css" if path.endswith(".css") else "text/html"
+                mime_type = mimetypes.guess_type(path)[0]
                 with open(path, 'r+b') as file:
                     content = file.read()
                     self.request.sendall(
@@ -89,7 +92,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
                     self.request.sendall(content)
                     file.close()
             except:
-                self.request.sendall(bytearray(statusCodes["notFound"], 'utf-8'))
+                self.request.sendall(
+                    bytearray(statusCodes["notFound"], 'utf-8'))
 
         # If no path is provided, print the status code
         else:
