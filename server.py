@@ -56,7 +56,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
     def move_path(self, path):
         """
-        Function for checking the provided path, adding path endings when needed and returning the mime_type
+        Function for checking the provided path, adding path endings when needed and returning the updated path
         """
         # Join path from current working directory, have it only serve files after ./www
         joined_path = os.path.join(os.getcwd(), 'www' + path)
