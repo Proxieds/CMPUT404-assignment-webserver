@@ -52,6 +52,7 @@ statusCodes = {
     "notAllowed": "HTTP/1.1 405 Method Not Allowed\r\n"
 }
 
+
 class MyWebServer(socketserver.BaseRequestHandler):
 
     def move_path(self, path):
@@ -78,7 +79,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
         if path:
             # Try and convert the path to a mimetype
             try:
-                # Old method for handling mimetypes, would not work with other types in the future, using stdlib mime_types instead 
+                # Old method for handling mimetypes, would not work with other types in the future, using stdlib mime_types instead
                 # mime_type = "text/css" if path.endswith(".css") else "text/html"
                 mime_type = mimetypes.guess_type(path)[0]
                 with open(path, 'r+b') as file:
@@ -86,10 +87,15 @@ class MyWebServer(socketserver.BaseRequestHandler):
                     self.request.sendall(
                         bytearray(statusCodes[status], 'utf-8'))
                     self.request.sendall(
+                        bytearray("User-Agent: Assignment 1 Webserver\r\n", 'utf-8'))
+                    self.request.sendall(
                         bytearray("Content-Type: {}\r\n".format(mime_type), 'utf-8'))
                     self.request.sendall(
-                        bytearray("Content-Length: {}\r\n\r\n".format(len(content)), 'utf-8'))
+                        bytearray("Content-Length: {}\r\n".format(len(content)), 'utf-8'))
+                    self.request.sendall(
+                        bytearray("Connection: close\r\n\r\n", 'utf-8'))
                     self.request.sendall(content)
+
                     file.close()
             except:
                 self.request.sendall(
